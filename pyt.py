@@ -15,7 +15,7 @@ def process(input_stream, transform, begin=None, end=None, strip_lines=True):
 
 
 def get_command_line_funcs(transform_arg, begin_arg, end_arg):
-    globals_ = {}
+    globals_ = {'print_if': print_if}
     locals_ = {}
 
     transform_code = compile(transform_arg, '<command-line>', 'single')
@@ -32,6 +32,11 @@ def get_command_line_funcs(transform_arg, begin_arg, end_arg):
         end = ExecFunc(end_code, globals_, locals_)
 
     return transform, begin, end
+
+
+def print_if(condition, *args):
+    if condition:
+        print ' '.join(str(arg) for arg in args)
 
 
 class ExecFunc(object):
