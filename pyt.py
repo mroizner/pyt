@@ -3,15 +3,20 @@ import argparse
 import sys
 
 
-def process(input_stream, transform, begin=None, end=None, strip_lines=True):
-    if begin is not None:
-        begin()
-    for line in input_stream:
-        if strip_lines:
-            line = line.rstrip('\n')
-        transform(line)
-    if end is not None:
-        end()
+def process(input_stream, output_stream, transform, begin=None, end=None, strip_lines=True):
+    prev_stdout = sys.stdout
+    sys.stdout = output_stream
+    try:
+        if begin is not None:
+            begin()
+        for line in input_stream:
+            if strip_lines:
+                line = line.rstrip('\n')
+            transform(line)
+        if end is not None:
+            end()
+    finally:
+        sys.stdout = prev_stdout
 
 
 def get_command_line_funcs(transform_arg, begin_arg, end_arg):
@@ -68,9 +73,7 @@ def main():
     else:
         parser.error('Transformation is not specified')
 
-    sys.stdout = args.output
-
-    process(args.input, transform, begin, end, args.strip)
+    process(args.input, args.output, transform, begin, end, args.strip)
 
 
 if __name__ == '__main__':
