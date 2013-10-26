@@ -56,9 +56,9 @@ def main():
                         help='Transformation end command')
     parser.add_argument('--nostrip', '-S', dest='strip', action='store_false', default=True,
                         help='Do not strip "\\n" at end of lines')
-    parser.add_argument('--input', '-i', type=argparse.FileType(mode='r', bufsize=1024 * 1024), default=sys.stdin,
+    parser.add_argument('--input', '-i', type=argparse.FileType('r'), default=sys.stdin,
                         help='Input file')
-    parser.add_argument('--output', '-o', type=argparse.FileType(mode='w', bufsize=1024 * 1024), default=sys.stdout,
+    parser.add_argument('--output', '-o', type=argparse.FileType('w'), default=sys.stdout,
                         help='Output file')
     args = parser.parse_args()
 
