@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import argparse
 import sys
+import re
 
 
 def process(input_stream, output_stream, transform, begin=None, end=None, strip_lines=True):
@@ -19,11 +20,11 @@ def process(input_stream, output_stream, transform, begin=None, end=None, strip_
         sys.stdout = prev_stdout
 
 
-def get_command_line_funcs(transform_arg, begin_arg, end_arg):
-    globals_ = {'print_if': print_if}
+def get_command_line_funcs(transform_arg, begin_arg, end_arg, extended=False):
+    globals_ = {}
     locals_ = {}
 
-    transform_code = compile(transform_arg, '<command-line>', 'single')
+    transform_code = compile_arg(transform_arg, extended)
 
     def transform(line):
         locals_['line'] = line
@@ -31,14 +32,14 @@ def get_command_line_funcs(transform_arg, begin_arg, end_arg):
 
     begin = None
     if begin_arg is not None:
-        begin_code = compile(begin_arg, '<command-line>', 'single')
+        begin_code = compile_arg(begin_arg, extended)
 
         def begin():
             exec begin_code in globals_, locals_
 
     end = None
     if end_arg is not None:
-        end_code = compile(end_arg, '<command-line>', 'single')
+        end_code = compile_arg(end_arg, extended)
 
         def end():
             exec end_code in globals_, locals_
@@ -46,9 +47,26 @@ def get_command_line_funcs(transform_arg, begin_arg, end_arg):
     return transform, begin, end
 
 
-def print_if(condition, *args):
-    if condition:
-        print ' '.join(str(arg) for arg in args)
+def compile_arg(arg, extended=False):
+    if not extended:
+        return compile(arg, '<command-line>', 'single')
+    else:
+        return compile(normalize_extended(arg), '<command-line>', 'exec')
+
+
+def normalize_extended(arg):
+    result = ''
+    tail = arg
+    regexp = re.compile(r'\s*\$(\\*)\^\s*')
+    while tail:
+        match = regexp.search(tail)
+        if match is None:
+            result += tail
+            tail = ''
+        else:
+            result += tail[:match.start()] + '\n' + len(match.group(1)) * '\t'
+            tail = tail[match.end():]
+    return result
 
 
 def main():
@@ -65,11 +83,14 @@ def main():
                         help='Input file')
     parser.add_argument('--output', '-o', type=argparse.FileType('w'), default=sys.stdout,
                         help='Output file')
+    parser.add_argument('--extended', '-E', action='store_true', default=False,
+                        help='Use multi-line commands '
+                             '("$\\\\\\^" for line-break and indents - each "\\" stands for one indent)')
     args = parser.parse_args()
 
     transform, begin, end = None, None, None
     if args.transform is not None:
-        transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end)
+        transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
     else:
         parser.error('Transformation is not specified')
 
