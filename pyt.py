@@ -58,7 +58,7 @@ def main():
     parser.add_argument('--end', '-e', default=None,
                         help='Transformation end command')
     parser.add_argument('--nostrip', '-S', dest='strip', action='store_false', default=True,
-                        help='Do not strip "\n" at end of lines')
+                        help='Do not strip "\\n" at end of lines')
     args = parser.parse_args()
 
     transform, begin, end = None, None, None
