@@ -71,29 +71,24 @@ def normalize_extended(arg):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('transform', nargs='?', default=None,
+    parser.add_argument('transform',
                         help='Transformation command')
+    parser.add_argument('input', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
+                        help='Input file')
+    parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout,
+                        help='Output file')
     parser.add_argument('--begin', '-b', default=None,
                         help='Transformation begin command')
     parser.add_argument('--end', '-e', default=None,
                         help='Transformation end command')
     parser.add_argument('--nostrip', '-S', dest='strip', action='store_false', default=True,
                         help='Do not strip "\\n" at end of lines')
-    parser.add_argument('--input', '-i', type=argparse.FileType('r'), default=sys.stdin,
-                        help='Input file')
-    parser.add_argument('--output', '-o', type=argparse.FileType('w'), default=sys.stdout,
-                        help='Output file')
     parser.add_argument('--extended', '-E', action='store_true', default=False,
                         help='Use multi-line commands '
                              '("$\\\\\\^" for line-break and indents - each "\\" stands for one indent)')
     args = parser.parse_args()
 
-    transform, begin, end = None, None, None
-    if args.transform is not None:
-        transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
-    else:
-        parser.error('Transformation is not specified')
-
+    transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
     process(args.input, args.output, transform, begin, end, args.strip)
 
 
