@@ -19,17 +19,24 @@ def get_command_line_funcs(transform_arg, begin_arg, end_arg):
     locals_ = {}
 
     transform_code = compile(transform_arg, '<command-line>', 'single')
-    transform = ExecFunc(transform_code, globals_, locals_, ['line'])
+
+    def transform(line):
+        locals_['line'] = line
+        exec transform_code in globals_, locals_
 
     begin = None
     if begin_arg is not None:
         begin_code = compile(begin_arg, '<command-line>', 'single')
-        begin = ExecFunc(begin_code, globals_, locals_)
+
+        def begin():
+            exec begin_code in globals_, locals_
 
     end = None
     if end_arg is not None:
         end_code = compile(end_arg, '<command-line>', 'single')
-        end = ExecFunc(end_code, globals_, locals_)
+
+        def end():
+            exec end_code in globals_, locals_
 
     return transform, begin, end
 
@@ -37,21 +44,6 @@ def get_command_line_funcs(transform_arg, begin_arg, end_arg):
 def print_if(condition, *args):
     if condition:
         print ' '.join(str(arg) for arg in args)
-
-
-class ExecFunc(object):
-    def __init__(self, code, globals_, locals_, arg_names=None):
-        self.code = code
-        self.globals = globals_
-        self.locals = locals_
-        self.arg_names = arg_names
-
-    def __call__(self, *args, **kwargs):
-        if args:
-            self.locals.update(zip(self.arg_names, args))
-        if kwargs:
-            self.locals.update(kwargs)
-        exec (self.code, self.globals, self.locals)
 
 
 def main():
