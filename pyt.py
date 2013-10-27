@@ -69,10 +69,45 @@ def normalize_extended(arg):
     return result
 
 
+def _no_transform_error(filename):
+    return RuntimeError('The module "{0}" does not define function with name "transform"'.format(filename))
+
+
+def get_file_funcs(filename, postpone_import=False):
+    globals_ = {}
+
+    if not postpone_import:
+        execfile(filename, globals_)
+        try:
+            transform = globals_['transform']
+        except KeyError:
+            raise _no_transform_error(filename)
+        begin = globals_.get('begin')
+        end = globals_.get('end')
+    else:
+        def transform(line):
+            try:
+                func = globals_['transform']
+            except KeyError:
+                raise _no_transform_error(filename)
+            func(line)
+
+        def begin():
+            execfile(filename, globals_)
+            if 'begin' in globals_:
+                globals_['begin']()
+
+        def end():
+            if 'end' in globals_:
+                globals_['end']()
+
+    return transform, begin, end
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('transform',
-                        help='Transformation command')
+                        help='Transformation command (or name of file with commands when "-f" specified)')
     parser.add_argument('input', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
                         help='Input file')
     parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout,
@@ -86,9 +121,19 @@ def main():
     parser.add_argument('--extended', '-E', action='store_true', default=False,
                         help='Use multi-line commands '
                              '("$\\\\\\^" for line-break and indents - each "\\" stands for one indent)')
+    parser.add_argument('--file', '-f', action='store_true', default=False,
+                        help='Read commands from file '
+                             '(a file must be a valid Python module with defined function "transform")')
+    parser.add_argument('--postpone', '-P', action='store_true', default=False,
+                        help='Postpone executing file ("-f" must be specified)')
     args = parser.parse_args()
 
-    transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
+    if args.file:
+        if args.begin is not None or args.end is not None or args.extended:
+            parser.error('Options "--begin", "--end", "--extended" cannot be specified when reading commands from file')
+        transform, begin, end = get_file_funcs(args.transform, args.postpone)
+    else:
+        transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
     process(args.input, args.output, transform, begin, end, args.strip)
 
 
