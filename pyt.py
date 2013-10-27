@@ -9,10 +9,11 @@ def process(input_stream, output_stream, transformer, strip_lines=True):
     sys.stdout = output_stream
     try:
         transformer.begin()
+        transform = transformer.transform   # To avoid numerous lookups
         for line in input_stream:
             if strip_lines:
                 line = line.rstrip('\n')
-            transformer.transform(line)
+            transform(line)
         transformer.end()
     finally:
         sys.stdout = prev_stdout
@@ -20,46 +21,51 @@ def process(input_stream, output_stream, transformer, strip_lines=True):
 
 class CommandLineTransformer(object):
     def __init__(self, transform_arg, begin_arg, end_arg, extended=False):
-        self._globals = {}
-        self._locals = {}
-        self._transform_code = _compile_arg(transform_arg, extended)
-        assert self._transform_code is not None
-        self._begin_code = _compile_arg(begin_arg, extended)
-        self._end_code = _compile_arg(end_arg, extended)
+        _globals = {}
+        _locals = {}
 
-    def begin(self):
-        if self._begin_code is not None:
-            exec self._begin_code in self._globals, self._locals
+        _transform_code = _compile_arg(transform_arg, extended)
+        assert _transform_code is not None
 
-    def transform(self, line):
-        self._locals['line'] = line
-        exec self._transform_code in self._globals, self._locals
+        def transform(line):
+            _locals['line'] = line
+            exec _transform_code in _globals, _locals
 
-    def end(self):
-        if self._end_code is not None:
-            exec self._end_code in self._globals, self._locals
+        self.transform = transform
+
+        self.begin = _pass
+        _begin_code = _compile_arg(begin_arg, extended)
+        if _begin_code is not None:
+            def begin():
+                exec _begin_code in _globals, _locals
+
+            self.begin = begin
+
+        self.end = _pass
+        _end_code = _compile_arg(end_arg, extended)
+        if _end_code is not None:
+            def end():
+                exec _end_code in _globals, _locals
+
+            self.end = end
 
 
 class FileTransformer(object):
     def __init__(self, filename):
-        self.filename = filename
+        self._filename = filename
+        self.transform = lambda line: _no_transform_error(filename)
+        self.end = _pass
 
     def begin(self):
         globals_ = {}
-        execfile(self.filename, globals_)
+        execfile(self._filename, globals_)
         if 'begin' in globals_:
             begin_func = globals_['begin']
             begin_func()
         if 'transform' in globals_:
-            setattr(self, 'transform', globals_['transform'])
+            self.transform = globals_['transform']
         if 'end' in globals_:
-            setattr(self, 'end', globals_['end'])
-
-    def transform(self, line):
-        raise _no_transform_error(self.filename)
-
-    def end(self):
-        pass
+            self.end = globals_['end']
 
 
 def _compile_arg(arg, extended=False):
@@ -84,6 +90,10 @@ def _normalize_extended(arg):
             result += tail[:match.start()] + '\n' + len(match.group(1)) * '\t'
             tail = tail[match.end():]
     return result
+
+
+def _pass():
+    pass
 
 
 def _no_transform_error(filename):
