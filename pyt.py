@@ -4,57 +4,74 @@ import sys
 import re
 
 
-def process(input_stream, output_stream, transform, begin=None, end=None, strip_lines=True):
+def process(input_stream, output_stream, transformer, strip_lines=True):
     prev_stdout = sys.stdout
     sys.stdout = output_stream
     try:
-        if begin is not None:
-            begin()
+        transformer.begin()
         for line in input_stream:
             if strip_lines:
                 line = line.rstrip('\n')
-            transform(line)
-        if end is not None:
-            end()
+            transformer.transform(line)
+        transformer.end()
     finally:
         sys.stdout = prev_stdout
 
 
-def get_command_line_funcs(transform_arg, begin_arg, end_arg, extended=False):
-    globals_ = {}
-    locals_ = {}
+class CommandLineTransformer(object):
+    def __init__(self, transform_arg, begin_arg, end_arg, extended=False):
+        self._globals = {}
+        self._locals = {}
+        self._transform_code = _compile_arg(transform_arg, extended)
+        assert self._transform_code is not None
+        self._begin_code = _compile_arg(begin_arg, extended)
+        self._end_code = _compile_arg(end_arg, extended)
 
-    transform_code = compile_arg(transform_arg, extended)
+    def begin(self):
+        if self._begin_code is not None:
+            exec self._begin_code in self._globals, self._locals
 
-    def transform(line):
-        locals_['line'] = line
-        exec transform_code in globals_, locals_
+    def transform(self, line):
+        self._locals['line'] = line
+        exec self._transform_code in self._globals, self._locals
 
-    begin = None
-    if begin_arg is not None:
-        begin_code = compile_arg(begin_arg, extended)
-
-        def begin():
-            exec begin_code in globals_, locals_
-
-    end = None
-    if end_arg is not None:
-        end_code = compile_arg(end_arg, extended)
-
-        def end():
-            exec end_code in globals_, locals_
-
-    return transform, begin, end
+    def end(self):
+        if self._end_code is not None:
+            exec self._end_code in self._globals, self._locals
 
 
-def compile_arg(arg, extended=False):
+class FileTransformer(object):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def begin(self):
+        globals_ = {}
+        execfile(self.filename, globals_)
+        if 'begin' in globals_:
+            begin_func = globals_['begin']
+            begin_func()
+        if 'transform' in globals_:
+            setattr(self, 'transform', globals_['transform'])
+        if 'end' in globals_:
+            setattr(self, 'end', globals_['end'])
+
+    def transform(self, line):
+        raise _no_transform_error(self.filename)
+
+    def end(self):
+        pass
+
+
+def _compile_arg(arg, extended=False):
+    if arg is None:
+        return None
     if not extended:
         return compile(arg, '<command-line>', 'single')
     else:
-        return compile(normalize_extended(arg), '<command-line>', 'exec')
+        return compile(_normalize_extended(arg), '<command-line>', 'exec')
 
 
-def normalize_extended(arg):
+def _normalize_extended(arg):
     result = ''
     tail = arg
     regexp = re.compile(r'\s*\$(\\*)\^\s*')
@@ -71,37 +88,6 @@ def normalize_extended(arg):
 
 def _no_transform_error(filename):
     return RuntimeError('The module "{0}" does not define function with name "transform"'.format(filename))
-
-
-def get_file_funcs(filename, postpone_import=False):
-    globals_ = {}
-
-    if not postpone_import:
-        execfile(filename, globals_)
-        try:
-            transform = globals_['transform']
-        except KeyError:
-            raise _no_transform_error(filename)
-        begin = globals_.get('begin')
-        end = globals_.get('end')
-    else:
-        def transform(line):
-            try:
-                func = globals_['transform']
-            except KeyError:
-                raise _no_transform_error(filename)
-            func(line)
-
-        def begin():
-            execfile(filename, globals_)
-            if 'begin' in globals_:
-                globals_['begin']()
-
-        def end():
-            if 'end' in globals_:
-                globals_['end']()
-
-    return transform, begin, end
 
 
 def main():
@@ -124,17 +110,15 @@ def main():
     parser.add_argument('--file', '-f', action='store_true', default=False,
                         help='Read commands from file '
                              '(a file must be a valid Python module with defined function "transform")')
-    parser.add_argument('--postpone', '-P', action='store_true', default=False,
-                        help='Postpone executing file ("-f" must be specified)')
     args = parser.parse_args()
 
     if args.file:
         if args.begin is not None or args.end is not None or args.extended:
             parser.error('Options "--begin", "--end", "--extended" cannot be specified when reading commands from file')
-        transform, begin, end = get_file_funcs(args.transform, args.postpone)
+        transformer = FileTransformer(args.transform)
     else:
-        transform, begin, end = get_command_line_funcs(args.transform, args.begin, args.end, args.extended)
-    process(args.input, args.output, transform, begin, end, args.strip)
+        transformer = CommandLineTransformer(args.transform, args.begin, args.end, args.extended)
+    process(args.input, args.output, transformer, args.strip)
 
 
 if __name__ == '__main__':
