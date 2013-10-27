@@ -14,7 +14,7 @@ $ ln -s ~/bin/pyt/pyt.py ~/bin/pyt
 ```
 If ~/bin is not in your $PATH you can add it:
 ```bash
-$ echo "export PATH+=\"~/bin:\$PATH\" >> ~/.bashrc
+$ echo 'export PATH+=\"~/bin:\$PATH\"' >> ~/.bashrc
 $ . ~/.bashrc
 ```
   
@@ -45,8 +45,8 @@ $ pyt 'print len(line)' input.txt
 9
 ```
 
-The command must be a valid Python statement. Remember that you can run combine several statements into one with ";".
-If you want to calculate sum of numbers for each line:
+The command must be a valid Python statement. Remember that you can run combine several statements into one with `;`.
+If you want to calculate the sum of numbers on each line:
 ```bash
 $ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt
 1
@@ -56,7 +56,7 @@ $ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt
 16
 ```
 
-If you want to save the output to some file you can do in the standard way by specifying the file name. You can also read input data from the standard input rather than file.
+As always, if you want to save the output to some file you can do it by specifying the file name. You can also read input data from the standard input rather than from a file.
 ```bash
 $ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt output.txt
 $ cat output.txt
