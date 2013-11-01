@@ -45,7 +45,7 @@ $ pyt 'print len(line)' input.txt
 9
 ```
 
-The command must be a valid Python statement. Remember that you can run combine several statements into one with `;`.
+The command must be a valid Python statement. Remember that you can combine several statements into one with `;`.
 If you want to calculate the sum of numbers on each line:
 ```bash
 $ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt
@@ -73,7 +73,7 @@ Begin and end commands
 You can specify *begin* and/or *end* commands that will be called before and after all the lines being processed correspondingly. These commands will be called in the same context as the main command, i.e. all these commands have access to the same set of variables.
 For example, if you want to calculate the sum of all the numbers in the file:
 ```bash
-$ pyt --begin 's = 0' 'tokens = line.split(); s += sum(int(x) for x in tokens)' --end 'print s' input.txt
+$ pyt --begin 's = 0' --end 'print s' 'tokens = line.split(); s += sum(int(x) for x in tokens)' input.txt
 31
 ```
 
