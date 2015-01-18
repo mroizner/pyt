@@ -57,9 +57,10 @@ if LINE_INDEX % 2 == 0:
 16
 ```
 
-As always, if you want to save the output to some file you can do it by specifying the file name. You can also read input data from the standard input rather than from a file.
+As always, if you want to save the output to some file you can do it by specifying the file name. You can also read input data from the standard input rather than from a file, just omit the input file name. If the output file name is the same as the input file name the output will be written to a temp file and then the temp file will be renamed to the output file. 
 ```bash
-$ pyt 'tokens = LINE.split(); print sum(int(x) for x in tokens)' input.txt output.txt
+$ cp input.txt output.txt
+$ pyt 'tokens = LINE.split(); print sum(int(x) for x in tokens)' output.txt output.txt
 $ cat output.txt
 1
 2
