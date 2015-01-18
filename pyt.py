@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import os
 import sys
 
 
@@ -33,10 +34,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('transform',
                         help='Transformation command')
-    parser.add_argument('input', nargs='?', type=argparse.FileType('r'), default=sys.stdin,
-                        help='Input file')
-    parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout,
-                        help='Output file')
+    parser.add_argument('input', nargs='?', help='Input file')
+    parser.add_argument('output', nargs='?', help='Output file')
     parser.add_argument('--nostrip', '-S', dest='strip', action='store_false', default=True,
                         help='Do not strip "\\n" at end of lines')
     parser.add_argument('--extended', '-e', action='store_true', default=False,
@@ -44,7 +43,24 @@ def main():
                              ' variable. The code is run only once.')
     args = parser.parse_args()
 
-    process(args.transform, args.input, args.output, args.extended, args.strip)
+    temp_file = None
+    if args.input is None:
+        input_stream = sys.stdin
+    else:
+        input_stream = open(args.input, 'r')
+    if args.output is None:
+        output_stream = sys.stdout
+    elif args.output != args.input:
+        output_stream = open(args.input, 'w')
+    else:
+        temp_file = args.output + '~'
+        output_stream = open(temp_file, 'w')
+
+    process(args.transform, input_stream, output_stream, args.extended, args.strip)
+
+    if temp_file is not None:
+        output_stream.close()
+        os.rename(temp_file, args.output)
 
 
 if __name__ == '__main__':
