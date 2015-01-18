@@ -33,11 +33,11 @@ Suppose you have a file "input.txt" that you want to be processed:
 Basic usage
 -----------
 
-The simple way of using PyT is just specifying any Python command you want to be called for each line. The line itself will be passed to the command as a variable `line`.
+The simple way of using PyT is just specifying any Python code you want to be called for each line. The line itself will be passed to the code as a variable `LINE`. The index of the line (0-based) will be passed as a variable `LINE_INDEX`.
 
 If you want output number of characters on each line you can type:
 ```bash
-$ pyt 'print len(line)' input.txt
+$ pyt 'print len(LINE)' input.txt
 1
 3
 5
@@ -45,20 +45,21 @@ $ pyt 'print len(line)' input.txt
 9
 ```
 
-The command must be a valid Python statement. Remember that you can combine several statements into one with `;`.
-If you want to calculate the sum of numbers on each line:
+You can write multi-line code:
 ```bash
-$ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt
+$ pyt '
+if LINE_INDEX % 2 == 0:
+  tokens = LINE.split()
+  print sum(int(x) for x in tokens)
+' input.txt
 1
-2
 4
-8
 16
 ```
 
 As always, if you want to save the output to some file you can do it by specifying the file name. You can also read input data from the standard input rather than from a file.
 ```bash
-$ pyt 'tokens = line.split(); print sum(int(x) for x in tokens)' input.txt output.txt
+$ pyt 'tokens = LINE.split(); print sum(int(x) for x in tokens)' input.txt output.txt
 $ cat output.txt
 1
 2
@@ -67,47 +68,36 @@ $ cat output.txt
 16
 ```
 
-Begin and end commands
-----------------------
-
-You can specify *begin* and/or *end* commands that will be called before and after all the lines being processed correspondingly. These commands will be called in the same context as the main command, i.e. all these commands have access to the same set of variables.
-For example, if you want to calculate the sum of all the numbers in the file:
+By default, `\n` on the end of every line is omited. You can use `--nostrip` (`-S`) option to keep it:
 ```bash
-$ pyt --begin 's = 0' --end 'print s' 'tokens = line.split(); s += sum(int(x) for x in tokens)' input.txt
-31
-```
-
-Multi-line commands
--------------------
-
-Sometimes, single Python statements are not enough. If you want to use *if*, *for*, etc. in your code you need the *extended* mode. In this mode, you can use `$^` as line breaks (like in regular expressions). If you want your next line to be indented use `$\^` for single indent, `$\\^` for double indent, and so on.
-If you want to print even numbers in the file:
-```bash
-$ pyt -E 'tokens = line.split() $^ for t in tokens: $\^ x = int(t) $\^ if x % 2 == 0: $\\^ print x' input.txt
+$ pyt -S 'print len(LINE)' input.txt
 2
 4
 6
-4
+8
+10
 ```
 
-Commands in file
-----------------
+Extended mode
+-------------
 
-You can also write you commands in a separate file. The file should be a valid Python module. A function with name `transform` will be used as the main transfrom command. This function must be callable with one argument (a line). If there are functions with names `begin` and/or `end` they will be used as the corresponding commands.
+There some cases when you need to do something more than just to execute some simple code for every line. For example, you might need to import some modules. For such cases, you can use `--extended` (`-e`) option. In this mode, your code is executed only once for the whole input data (rather than for every line) and all the input is passed to your code as a varaible `INPUT`. You can iterate over input lines with it:
 
-Suppose you have a file transform.py:
-```python
-def transform(line):
-    if len(line) < 4:
-        print 'Line:', line
-def end():
-    print 'No more short lines left.'
-```
-
-You can use it with PyT:
 ```bash
-$ pyt -f transform.py input.txt
-Line: 1
-Line: 1 1
-No more short lines left.
+$ pyt -e '
+import math
+for line in INPUT:
+  tokens = line.split()
+  s = sum(int(x) for x in tokens)
+  print math.log(s)
+print "End"
+' input.txt
+0.0
+0.69314718056
+1.38629436112
+2.07944154168
+2.77258872224
+End
 ```
+
+If you use `--nostrip` option together with this mode, `INPUT` will represent the input stream (with all the useful methods such as `read`) rather than just a generator of stripped lines.
