@@ -51,7 +51,7 @@ def main():
     if args.output is None:
         output_stream = sys.stdout
     elif args.output != args.input:
-        output_stream = open(args.input, 'w')
+        output_stream = open(args.output, 'w')
     else:
         temp_file = args.output + '~'
         output_stream = open(temp_file, 'w')
