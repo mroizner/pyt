@@ -8,9 +8,9 @@ Installation
 
 Just clone the repository and make a symlink:
 ```bash
+$ git clone git://github.yandex-team.ru/roizner/pyt.git ~/pyt
 $ mkdir -p ~/bin
-$ git clone git://github.yandex-team.ru/roizner/pyt.git ~/bin/pyt
-$ ln -s ~/bin/pyt/pyt.py ~/bin/pyt
+$ ln -s ~/pyt/pyt.py ~/bin/pyt
 ```
 If ~/bin is not in your $PATH you can add it:
 ```bash
