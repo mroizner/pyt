@@ -103,6 +103,8 @@ def process(transformation, input1_stream, output1_stream,
             user_locals['_'] = _
             user_locals['_index'] = _index
             exec transformation_code in user_globals, user_locals
+    else:
+        exec transformation_code in user_globals, user_locals
     if end_code is not None:
         exec end_code in user_globals, user_locals
 
