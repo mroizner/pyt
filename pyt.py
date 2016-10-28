@@ -92,21 +92,20 @@ def process(transformation, input1_stream, output1_stream,
         else:
             raise Exception('Incorrect stream index: %s' % stream)
 
-    user_globals = {'input': input1, 'input1': input1, 'input2': input2,
-                    'output': output, 'output1': output1, 'output2': output2}
-    user_locals = {}
-
+    user_vars = {'input': input1, 'input1': input1, 'input2': input2,
+                 'output': output, 'output1': output1, 'output2': output2}
+    
     if begin_code is not None:
-        exec begin_code in user_globals, user_locals
+        exec begin_code in user_vars, user_vars
     if mapping_mode:
         for _index, _ in enumerate(input1):
-            user_locals['_'] = _
-            user_locals['_index'] = _index
-            exec transformation_code in user_globals, user_locals
+            user_vars['_'] = _
+            user_vars['_index'] = _index
+            exec transformation_code in user_vars, user_vars
     else:
-        exec transformation_code in user_globals, user_locals
+        exec transformation_code in user_vars, user_vars
     if end_code is not None:
-        exec end_code in user_globals, user_locals
+        exec end_code in user_vars, user_vars
 
     output1.finish()
     if output2 is not None:
