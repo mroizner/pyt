@@ -11,6 +11,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('transform',
                         help='Transformation code')
+    parser.add_argument('--from-file', '-f', action='store_true',
+                        help='Read transformation code from the file with the name specified in that argument')
     parser.add_argument('--input', '-i', help='Main input file')
     parser.add_argument('--output', '-o', help='Main output file')
     parser.add_argument('--input2', '-I', help='Secondary input file')
@@ -57,9 +59,17 @@ def main():
         temp_file2 = args.output2 + '~'
         output_stream2 = open(temp_file2, 'w')
 
-    process(args.transform, input_stream1, output_stream1, args.in_format, args.out_format,
+    if args.from_file:
+        transformation = open(args.transform).read()
+        transformation_code = compile(transformation, args.transform, 'exec')
+    else:
+        transformation_code = compile(args.transform, '<command-line>', 'exec')
+    begin_code = compile(args.begin, '<command-line>', 'exec') if args.begin is not None else None
+    end_code = compile(args.end, '<command-line>', 'exec') if args.end is not None else None
+
+    process(transformation_code, input_stream1, output_stream1, args.in_format, args.out_format,
             input_stream2, output_stream2, args.in2_format, args.out2_format,
-            args.map, args.begin, args.end)
+            args.map, begin_code, end_code)
 
     if temp_file is not None:
         output_stream1.close()
@@ -69,14 +79,11 @@ def main():
         os.rename(temp_file2, args.output2)
 
 
-def process(transformation, input1_stream, output1_stream,
+def process(transformation_code, input1_stream, output1_stream,
             input1_format=None, output1_format=None,
             input2_stream=None, output2_stream=None,
             input2_format=None, output2_format=None,
-            mapping_mode=False, begin=None, end=None):
-    transformation_code = compile(transformation, '<command-line>', 'exec')
-    begin_code = compile(begin, '<command-line>', 'exec') if begin is not None else None
-    end_code = compile(end, '<command-line>', 'exec') if end is not None else None
+            mapping_mode=False, begin_code=None, end_code=None):
     input1 = get_input(input1_stream, input1_format)
     output1 = get_output(output1_stream, output1_format)
     input2 = get_input(input2_stream, input2_format) if input2_stream is not None else None
@@ -94,7 +101,7 @@ def process(transformation, input1_stream, output1_stream,
 
     user_vars = {'input': input1, 'input1': input1, 'input2': input2,
                  'output': output, 'output1': output1, 'output2': output2}
-    
+
     if begin_code is not None:
         exec begin_code in user_vars, user_vars
     if mapping_mode:
