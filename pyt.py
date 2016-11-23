@@ -9,10 +9,7 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('transform',
-                        help='Transformation code')
-    parser.add_argument('--from-file', '-f', action='store_true',
-                        help='Read transformation code from the file with the name specified in that argument')
+    parser.add_argument('transform', type=compile_expr, help='Transformation code')
     parser.add_argument('--input', '-i', help='Main input file')
     parser.add_argument('--output', '-o', help='Main output file')
     parser.add_argument('--input2', '-I', help='Secondary input file')
@@ -29,8 +26,8 @@ def main():
 
     parser.add_argument('--map', '-m', action='store_true',
                         help='Apply transformation for each element of the main input')
-    parser.add_argument('--begin', '-b', help='Code to execute before transformations')
-    parser.add_argument('--end', '-e', help='Code to execute after transformations')
+    parser.add_argument('--begin', '-b', type=compile_expr, help='Code to execute before transformations')
+    parser.add_argument('--end', '-e', type=compile_expr, help='Code to execute after transformations')
 
     args = parser.parse_args()
 
@@ -59,17 +56,9 @@ def main():
         temp_file2 = args.output2 + '~'
         output_stream2 = open(temp_file2, 'w')
 
-    if args.from_file:
-        transformation = open(args.transform).read()
-        transformation_code = compile(transformation, args.transform, 'exec')
-    else:
-        transformation_code = compile(args.transform, '<command-line>', 'exec')
-    begin_code = compile(args.begin, '<command-line>', 'exec') if args.begin is not None else None
-    end_code = compile(args.end, '<command-line>', 'exec') if args.end is not None else None
-
-    process(transformation_code, input_stream1, output_stream1, args.in_format, args.out_format,
+    process(args.transform, input_stream1, output_stream1, args.in_format, args.out_format,
             input_stream2, output_stream2, args.in2_format, args.out2_format,
-            args.map, begin_code, end_code)
+            args.map, args.begin, args.end)
 
     if temp_file is not None:
         output_stream1.close()
@@ -79,11 +68,11 @@ def main():
         os.rename(temp_file2, args.output2)
 
 
-def process(transformation_code, input1_stream, output1_stream,
+def process(transformation, input1_stream, output1_stream,
             input1_format=None, output1_format=None,
             input2_stream=None, output2_stream=None,
             input2_format=None, output2_format=None,
-            mapping_mode=False, begin_code=None, end_code=None):
+            mapping_mode=False, begin=None, end=None):
     input1 = get_input(input1_stream, input1_format)
     output1 = get_output(output1_stream, output1_format)
     input2 = get_input(input2_stream, input2_format) if input2_stream is not None else None
@@ -102,17 +91,17 @@ def process(transformation_code, input1_stream, output1_stream,
     user_vars = {'input': input1, 'input1': input1, 'input2': input2,
                  'output': output, 'output1': output1, 'output2': output2}
 
-    if begin_code is not None:
-        exec begin_code in user_vars, user_vars
+    if begin is not None:
+        exec begin in user_vars, user_vars
     if mapping_mode:
         for _index, _ in enumerate(input1):
             user_vars['_'] = _
             user_vars['_index'] = _index
-            exec transformation_code in user_vars, user_vars
+            exec transformation in user_vars, user_vars
     else:
-        exec transformation_code in user_vars, user_vars
-    if end_code is not None:
-        exec end_code in user_vars, user_vars
+        exec transformation in user_vars, user_vars
+    if end is not None:
+        exec end in user_vars, user_vars
 
     output1.finish()
     if output2 is not None:
@@ -173,7 +162,7 @@ class TextOutput(Output):
 class TsvOutput(Output):
     def __init__(self, output_stream):
         super(TsvOutput, self).__init__(output_stream)
-        self.writer = csv.writer(output_stream, delimiter='\t')
+        self.writer = csv.writer(output_stream, delimiter='\t', lineterminator=os.linesep)
 
     def __call__(self, value):
         self.writer.writerow(value)
@@ -189,7 +178,7 @@ class TsvWithHeaderOutput(Output):
 
     def __call__(self, value):
         if self.writer is None:
-            self.writer = csv.DictWriter(self.output, list(value), delimiter='\t')
+            self.writer = csv.DictWriter(self.output, list(value), delimiter='\t', lineterminator=os.linesep)
             if not isinstance(value, dict):
                 return
 
@@ -217,6 +206,9 @@ class JsonOutput(Output):
     def finish(self):
         json.dump(self.result, self.output)
 
+
+def compile_expr(expr):
+    return compile(expr, '<command-line>', 'exec')
 
 if __name__ == '__main__':
     main()
