@@ -114,9 +114,9 @@ def get_input(input_stream, input_format):
     if input_format == 'text-lines':
         return (line.rstrip('\r\n') for line in input_stream)
     if input_format == 'tsv':
-        return csv.reader(input_stream, delimiter='\t')
+        return csv.reader(input_stream, delimiter='\t', quoting=csv.QUOTE_NONE, quotechar=None)
     if input_format == 'tsv-header':
-        return csv.DictReader(input_stream, delimiter='\t')
+        return csv.DictReader(input_stream, delimiter='\t', quoting=csv.QUOTE_NONE, quotechar=None)
     if input_format == 'json':
         return json.load(input_stream)
     raise Exception('Unknown input format: %s' % input_format)
@@ -162,7 +162,8 @@ class TextOutput(Output):
 class TsvOutput(Output):
     def __init__(self, output_stream):
         super(TsvOutput, self).__init__(output_stream)
-        self.writer = csv.writer(output_stream, delimiter='\t', lineterminator=os.linesep)
+        self.writer = csv.writer(output_stream, delimiter='\t', lineterminator=os.linesep, quoting=csv.QUOTE_NONE,
+                                 quotechar=None)
 
     def __call__(self, value):
         self.writer.writerow(value)
@@ -178,7 +179,8 @@ class TsvWithHeaderOutput(Output):
 
     def __call__(self, value):
         if self.writer is None:
-            self.writer = csv.DictWriter(self.output, list(value), delimiter='\t', lineterminator=os.linesep)
+            self.writer = csv.DictWriter(self.output, list(value), delimiter='\t', lineterminator=os.linesep,
+                                         quoting=csv.QUOTE_NONE, quotechar=None)
             if not isinstance(value, dict):
                 return
 
@@ -209,6 +211,7 @@ class JsonOutput(Output):
 
 def compile_expr(expr):
     return compile(expr, '<command-line>', 'exec')
+
 
 if __name__ == '__main__':
     main()
