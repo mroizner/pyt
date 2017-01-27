@@ -181,6 +181,7 @@ class TsvWithHeaderOutput(Output):
         if self.writer is None:
             self.writer = csv.DictWriter(self.output, list(value), delimiter='\t', lineterminator=os.linesep,
                                          quoting=csv.QUOTE_NONE, quotechar=None)
+            self.writer.writeheader()
             if not isinstance(value, dict):
                 return
 
